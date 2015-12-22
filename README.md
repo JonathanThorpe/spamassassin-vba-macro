@@ -8,7 +8,7 @@ This plugin was built in response to increasing phishing/malware found in Micros
 
 Most installations running SpamAssassin also run ClamAV and while ClamAV has a configuration option to block OLE2Macros (OLE2BlockMacros), this doesn't work well in practice because surprisingly, some people still send emails with legitimate VBA Macros.
 
-This plugin is designed to crudely (but so far, effectively) identify VBA/OLE2 Macros embedded in Microsoft Word and Excel Documents and allows you to assign a configurable score to these documents such that other factors can contribute to an overall score before considering the email spam.
+This plugin is designed to crudely (but so far, effectively) identify VBA/OLE2 Macros embedded in Microsoft Word and Excel Documents by looking at a signature in the file only present when VBA Macros are used and allows you to assign a configurable score to these documents such that other factors can contribute to an overall score before considering the email spam.
 
 
 
