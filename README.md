@@ -23,3 +23,7 @@ score MICROSOFT_OLE2MACRO 4
 ```
 
 In most cases, you will want to adjust the score accordingly, however, with a cut-off score of 5.5, 4.0 as described above has worked well in a production environment with diverse users.
+
+## To Do ##
+
+In isolated cases, Word/Excel Documents are contained within Zip archives which are undetected by this software. Investigate unpacking zip files and examining such files contained within.
