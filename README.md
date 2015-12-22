@@ -10,5 +10,16 @@ Most installations running SpamAssassin also run ClamAV and while ClamAV has a c
 
 This plugin is designed to crudely (but so far, effectively) identify VBA/OLE2 Macros embedded in Microsoft Word and Excel Documents by looking at a signature in the file only present when VBA Macros are used and allows you to assign a configurable score to these documents such that other factors can contribute to an overall score before considering the email spam.
 
+## Installation ##
 
+Simply place the following in your SpamAssassin configuration file. For instance ```/etc/spamassassin/conf.d/90_ole2macro.cf```
 
+```
+loadplugin OLE2Macro ole2macro.pm
+
+body MICROSOFT_OLE2MACRO eval:check_microsoft_ole2macro()
+describe MICROSOFT_OLE2MACRO Has an attachment that contains an OLE2 Macro
+score MICROSOFT_OLE2MACRO 4
+```
+
+In most cases, you will want to adjust the score accordingly, however, with a cut-off score of 5.5, 4.0 as described above has worked well in a production environment with diverse users.
