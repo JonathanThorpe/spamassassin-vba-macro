@@ -12,7 +12,7 @@ This plugin is designed to crudely (but so far, effectively) identify VBA/OLE2 M
 
 ## Installation ##
 
-Simply place the following in your SpamAssassin configuration file. For instance ```/etc/spamassassin/conf.d/90_ole2macro.cf```
+Simply place the following in your SpamAssassin configuration file along with the ole2macro.pm in a directory where SpamAssassin is able to find it (i.e. /etc/spamassassin). For instance ```/etc/spamassassin/conf.d/90_ole2macro.cf```
 
 ```
 loadplugin OLE2Macro ole2macro.pm
