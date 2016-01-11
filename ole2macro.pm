@@ -23,7 +23,7 @@ OLE2Macro - Look for Macro Embedded Microsoft Word and Excel Documents
 
   loadplugin     ole2macro.pm
   body MICROSOFT_OLE2MACRO eval:check_microsoft_ole2macro()
-  score MICROSOFT_OLE2MACRO 3
+  score MICROSOFT_OLE2MACRO 4
   
 =head1 DESCRIPTION
 
@@ -40,6 +40,8 @@ package OLE2Macro;
 
 use Mail::SpamAssassin::Plugin;
 use Mail::SpamAssassin::Util;
+use IO::Uncompress::Unzip;
+
 use strict;
 use warnings;
 use bytes;
@@ -47,6 +49,12 @@ use re 'taint';
 
 use vars qw(@ISA);
 @ISA = qw(Mail::SpamAssassin::Plugin);
+
+#File types and markers
+my $match_types = qr/(?:xls|ppt|doc|docm|dot|dotm|xlsm|xlsb|pptm|ppsm)$/;
+
+#Markers in the other in which they should be found.
+my @markers = ("\xd0\xcf\x11\xe0", "\x00\x41\x74\x74\x72\x69\x62\x75\x74\x00");
 
 # constructor: register the eval rule
 sub new {
@@ -67,14 +75,26 @@ sub check_microsoft_ole2macro {
   my ($self, $pms) = @_;
 
   _check_attachments(@_) unless exists $pms->{nomacro_microsoft_ole2macro};
-
   return $pms->{nomacro_microsoft_ole2macro};
+}
+
+sub _match_markers {
+   my ($data) = @_;
+
+   my $matched=0;
+   foreach(@markers){
+     if(index($data, $_) > -1){
+        $matched++;
+     }else{ 
+        last;
+     }
+   }
+
+   return $matched == @markers;
 }
 
 sub _check_attachments {
   my ($self, $pms) = @_;
-  my $marker1 = "\xd0\xcf\x11\xe0"; 
-  my $marker2 = "\x00\x41\x74\x74\x72\x69\x62\x75\x74\x00"; 
 
   $pms->{nomacro_microsoft_ole2macro} = 0;
 
@@ -84,13 +104,34 @@ sub _check_attachments {
 
     my $cte = lc($p->get_header('content-transfer-encoding') || '');
     $ctype = lc $ctype;
-
+    $name = lc($name || '');
     if ($cte =~ /base64/){
-       my $contents = $p->decode();
-       if (index($contents, $marker1) > -1 && 
-           index($contents, $marker2) > -1) {
-          $pms->{nomacro_microsoft_ole2macro} = 1;
-       }
+      if ($name =~ $match_types){
+          my $contents = $p->decode();
+          if(_match_markers($contents)){
+             $pms->{nomacro_microsoft_ole2macro} = 1;
+             last;
+          }
+      }elsif($name =~ /(?:zip)$/){
+          my $contents = $p->decode();
+          my $z = new IO::Uncompress::Unzip \$contents;
+
+          my $status;
+          my $buff;
+          for ($status = 1; $status > 0; $status = $z->nextStream()){
+             if (lc $z->getHeaderInfo()->{Name} =~ $match_types){
+                my $attachment_data = "";
+                while (($status = $z->read($buff)) > 0) {
+                   $attachment_data .= $buff;
+                }
+                 
+                if(_match_markers($attachment_data)){
+                   $pms->{nomacro_microsoft_ole2macro} = 1;
+                   last;
+                }
+             }
+          }
+      }
     }
   }
 }
