@@ -39,6 +39,7 @@ https://blog.rootshell.be/2015/01/08/searching-for-microsoft-office-files-contai
 package OLE2Macro;
 
 use Mail::SpamAssassin::Plugin;
+use Mail::SpamAssassin::Logger;
 use Mail::SpamAssassin::Util;
 use IO::Uncompress::Unzip;
 
@@ -123,30 +124,35 @@ sub _check_attachments {
 
           my $status;
           my $buff;
-          for ($status = 1; $status > 0; $status = $z->nextStream()) {
-             if (lc $z->getHeaderInfo()->{Name} =~ $match_types) {
-                 $processed_files_counter += 1;
-                 if ($processed_files_counter > $archived_files_process_limit) {
-                     dbg( "Stopping processing archive on file ".$z->getHeaderInfo()->{Name}.": processed files count limit reached\n" );
-                     last;
-                 }
-                 my $attachment_data = "";
-                 my $read_size = 0;
-                 while (($status = $z->read( $buff )) > 0) {
-                     $attachment_data .= $buff;
-                     $read_size += length( $buff );
-                     if ($read_size > $file_max_read_size) {
-                         dbg( "Stopping processing file ".$z->getHeaderInfo()->{Name}." in archive: processed file size overlimit\n" );
-                         last;
-                     }
-                 }
 
-                 if (_match_markers( $attachment_data )) {
-                     $pms->{nomacro_microsoft_ole2macro} = 1;
-                     last;
-                 }
+          if ($z) {
+             for ($status = 1; $status > 0; $status = $z->nextStream()) {
+                if (lc $z->getHeaderInfo()->{Name} =~ $match_types) {
+                    $processed_files_counter += 1;
+                    if ($processed_files_counter > $archived_files_process_limit) {
+                        dbg( "Stopping processing archive on file ".$z->getHeaderInfo()->{Name}.": processed files count limit reached\n" );
+                        last;
+                    }
+                    my $attachment_data = "";
+                    my $read_size = 0;
+                    while (($status = $z->read( $buff )) > 0) {
+                        $attachment_data .= $buff;
+                        $read_size += length( $buff );
+                        if ($read_size > $file_max_read_size) {
+                            dbg( "Stopping processing file ".$z->getHeaderInfo()->{Name}." in archive: processed file size overlimit\n" );
+                            last;
+                        }
+                    }
+
+                    if (_match_markers( $attachment_data )) {
+                        $pms->{nomacro_microsoft_ole2macro} = 1;
+                        last;
+                    }
+                }
              }
-          }
+         }else{
+            dbg( "Unable to open ZIP file\n" );
+         }
     }
   }
 }
