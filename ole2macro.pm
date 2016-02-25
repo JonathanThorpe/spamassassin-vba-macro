@@ -38,6 +38,7 @@ https://blog.rootshell.be/2015/01/08/searching-for-microsoft-office-files-contai
 
 package OLE2Macro;
 
+use Mail::SpamAssassin::Logger;
 use Mail::SpamAssassin::Plugin;
 use Mail::SpamAssassin::Util;
 use IO::Uncompress::Unzip;
@@ -65,90 +66,90 @@ my $archive_max_read_size = 1024000;
 
 # constructor: register the eval rule
 sub new {
-  my $class = shift;
-  my $mailsaobject = shift;
+    my $class = shift;
+    my $mailsaobject = shift;
 
-  # some boilerplate...
-  $class = ref($class) || $class;
-  my $self = $class->SUPER::new($mailsaobject);
-  bless ($self, $class);
+    # some boilerplate...
+    $class = ref( $class ) || $class;
+    my $self = $class->SUPER::new( $mailsaobject );
+    bless ( $self, $class );
 
-  $self->register_eval_rule("check_microsoft_ole2macro");
+    $self->register_eval_rule( "check_microsoft_ole2macro" );
 
-  return $self;
+    return $self;
 }
 
 sub check_microsoft_ole2macro {
-  my ($self, $pms) = @_;
+    my ($self, $pms) = @_;
 
-  _check_attachments(@_) unless exists $pms->{nomacro_microsoft_ole2macro};
-  return $pms->{nomacro_microsoft_ole2macro};
+    _check_attachments( @_ ) unless exists $pms->{nomacro_microsoft_ole2macro};
+    return $pms->{nomacro_microsoft_ole2macro};
 }
 
 sub _match_markers {
-   my ($data) = @_;
+    my ($data) = @_;
 
-   my $matched=0;
-   foreach(@markers){
-     if(index($data, $_) > -1){
-        $matched++;
-     } else {
-        last;
-     }
-   }
+    my $matched = 0;
+    foreach(@markers) {
+        if (index( $data, $_ ) > -1) {
+            $matched++;
+        } else {
+            last;
+        }
+    }
 
-   return $matched == @markers;
+    return $matched == @markers;
 }
 
 sub _check_attachments {
-  my ($self, $pms) = @_;
+    my ($self, $pms) = @_;
 
-  my $processed_files_counter = 0;
-  $pms->{nomacro_microsoft_ole2macro} = 0;
+    my $processed_files_counter = 0;
+    $pms->{nomacro_microsoft_ole2macro} = 0;
 
-  foreach my $p ($pms->{msg}->find_parts(qr/./, 1)) {
-    my ($ctype, $boundary, $charset, $name) =
-      Mail::SpamAssassin::Util::parse_content_type($p->get_header('content-type'));
+    foreach my $p ($pms->{msg}->find_parts( qr/./, 1 )) {
+        my ($ctype, $boundary, $charset, $name) =
+            Mail::SpamAssassin::Util::parse_content_type( $p->get_header( 'content-type' ) );
 
-    $name = lc($name || '');
-    if ($name =~ $match_types) {
-          my $contents = $p->decode($file_max_read_size);
-          if(_match_markers($contents)){
-             $pms->{nomacro_microsoft_ole2macro} = 1;
-             last;
-          }
-    } elsif ($name =~ /(?:zip)$/) {
-          my $contents = $p->decode($archive_max_read_size);
-          my $z = new IO::Uncompress::Unzip \$contents;
+        $name = lc( $name || '' );
+        if ($name =~ $match_types) {
+            my $contents = $p->decode( $file_max_read_size );
+            if (_match_markers( $contents )) {
+                $pms->{nomacro_microsoft_ole2macro} = 1;
+                last;
+            }
+        } elsif ($name =~ /(?:zip)$/) {
+            my $contents = $p->decode( $archive_max_read_size );
+            my $z = new IO::Uncompress::Unzip \$contents;
 
-          my $status;
-          my $buff;
-          for ($status = 1; $status > 0; $status = $z->nextStream()) {
-             if (lc $z->getHeaderInfo()->{Name} =~ $match_types) {
-                 $processed_files_counter += 1;
-                 if ($processed_files_counter > $archived_files_process_limit) {
-                     dbg( "Stopping processing archive on file ".$z->getHeaderInfo()->{Name}.": processed files count limit reached\n" );
-                     last;
-                 }
-                 my $attachment_data = "";
-                 my $read_size = 0;
-                 while (($status = $z->read( $buff )) > 0) {
-                     $attachment_data .= $buff;
-                     $read_size += length( $buff );
-                     if ($read_size > $file_max_read_size) {
-                         dbg( "Stopping processing file ".$z->getHeaderInfo()->{Name}." in archive: processed file size overlimit\n" );
-                         last;
-                     }
-                 }
+            my $status;
+            my $buff;
+            for ($status = 1; $status > 0; $status = $z->nextStream()) {
+                if (lc $z->getHeaderInfo()->{Name} =~ $match_types) {
+                    $processed_files_counter += 1;
+                    if ($processed_files_counter > $archived_files_process_limit) {
+                        dbg( "Stopping processing archive on file ".$z->getHeaderInfo()->{Name}.": processed files count limit reached\n" );
+                        last;
+                    }
+                    my $attachment_data = "";
+                    my $read_size = 0;
+                    while (($status = $z->read( $buff )) > 0) {
+                        $attachment_data .= $buff;
+                        $read_size += length( $buff );
+                        if ($read_size > $file_max_read_size) {
+                            dbg( "Stopping processing file ".$z->getHeaderInfo()->{Name}." in archive: processed file size overlimit\n" );
+                            last;
+                        }
+                    }
 
-                 if (_match_markers( $attachment_data )) {
-                     $pms->{nomacro_microsoft_ole2macro} = 1;
-                     last;
-                 }
-             }
-          }
+                    if (_match_markers( $attachment_data )) {
+                        $pms->{nomacro_microsoft_ole2macro} = 1;
+                        last;
+                    }
+                }
+            }
+        }
     }
-  }
 }
 
 1;
