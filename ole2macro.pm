@@ -52,7 +52,8 @@ use vars qw(@ISA);
 @ISA = qw(Mail::SpamAssassin::Plugin);
 
 #File types and markers
-my $match_types = qr/(?:xls|ppt|doc|docm|dot|dotm|xlsm|xlsb|pptm|ppsm)$/;
+my $match_types = qr/(?:xls|xlt|pot|ppt|pps|doc|dot)$/;
+my $match_types_xml = qr/(?:xlsm|xltm|xlsb|potm|pptm|ppsm|docm|dotm)$/;
 
 #Markers in the other in which they should be found.
 my @markers = ("\xd0\xcf\x11\xe0", "\x00\x41\x74\x74\x72\x69\x62\x75\x74\x00");
@@ -148,11 +149,17 @@ sub _check_attachments {
                         $pms->{nomacro_microsoft_ole2macro} = 1;
                         last;
                     }
+                } elsif (lc $z->getHeaderInfo()->{Name} =~ $match_types_xml){
+                   $pms->{nomacro_microsoft_ole2macro} = 1;
+                   last;
                 }
              }
          }else{
             dbg( "Unable to open ZIP file\n" );
          }
+    } elsif ($name =~ $match_types_xml) {
+       $pms->{nomacro_microsoft_ole2macro} = 1;
+       last;
     }
   }
 }
