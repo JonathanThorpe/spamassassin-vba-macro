@@ -72,8 +72,9 @@ my $archive_max_read_size = 1024000;
 my $mime_max_read_size = 8;
 
 
-my $has_mimeinfo = 1;
-if(eval('use File::MimeInfo::Magic;')){
+my $has_mimeinfo = 0;
+eval('use File::MimeInfo::Magic');
+if(!$@){
     $has_mimeinfo = 1;
 }
 
